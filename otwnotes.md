@@ -178,4 +178,55 @@
       bandit21@bandit:/etc/cron.d$ cat /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
       tRae0UfB9v0UzbCdn9cY0gQnds9GF58Q
       ```
+### Level 22 -> 23
+- **Password needed:** 0Zf11ioIjMVN551jX3CmStKLYqjk54Ga
 
+  - We need to look inside the `/etc/cron.d` directory again and cat out the contents of the file we need. In this case the `cronjob_bandit23` file.
+
+  - ```bash
+    bandit22@bandit:/etc/cron.d$ cat cronjob_bandit23
+    @reboot bandit23 /usr/bin/cronjob_bandit23.sh  &> /dev/null
+    * * * * * bandit23 /usr/bin/cronjob_bandit23.sh  &> /dev/null
+    ```
+
+  - Then we can cat the contents of the script to see what it does.
+
+  ```bash
+  bandit22@bandit:/etc/cron.d$ cat /usr/bin/cronjob_bandit23.sh
+  #!/bin/bash
+
+  myname=$(whoami)
+  mytarget=$(echo I am user $myname | md5sum | cut -d ' ' -f 1)
+
+  echo "Copying passwordfile /etc/bandit_pass/$myname to /tmp/$mytarget"
+
+  cat /etc/bandit_pass/$myname > /tmp/$mytarget
+  ```
+
+  - I wasn't really sure what this did not being familiar with bash scripting so I ran the script to investigate.
+
+    ```bash
+    bandit22@bandit:/etc/cron.d$ /usr/bin/cronjob_bandit23.sh
+    Copying passwordfile /etc/bandit_pass/bandit22 to /tmp/8169b67bd894ddbb4412f91573b38db3
+    ```
+
+  - Basically the `whomai` command will print the current user when the command is invoked. Since we are logged in as bandit22 the variable 'myname' will use that value. 
+
+  - We want to copy the password file for the bandit23 user.
+
+  - There is a few ways to do this as always...
+
+    - You could change the variable with `myname=bandit23` then to get the 'mytarget' variable `echo I am user $myname | md5sum | cut -d ' ' -f 1`. 
+
+    - Or `echo I am user bandit23 | md5sum | cut -d ' ' -f 1` which will print the
+    'mytarget' variable which we can use to cat the next level password:
+
+    ```bash
+    bandit22@bandit:/etc/cron.d$ echo I am user $myname | md5sum | cut -d ' ' -f 1
+    8ca319486bfbbc3663ea0fbe81326349
+    bandit22@bandit:/etc/cron.d$ cat /tmp/8ca319486bfbbc3663ea0fbe81326349
+    0Zf11ioIjMVN551jX3CmStKLYqjk54Ga
+    ```
+
+### Level 23 -> 24
+- **Password needed:**
