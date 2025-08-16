@@ -129,3 +129,53 @@
   - I then read that you can can remotely execute commands through ssh as well which is pretty cool to learn.
   - `ssh bandit18@bandit.labs.overthewire.org -p 2220 ls` to make sure the readme is where we were told it was. 
   - Then use `ssh bandit18@bandit.labs.overthewire.org -p 2220 cat readme`
+
+### Level 19 -> 20 
+- **Password needed:** 0qXahG8ZjOVMN9Ghs7iOWsCfZyXOUbYO
+  - This is one that I am going to have to read a little bit more about regarding permissions and how it works. The website explains to use setuid to understand what is going on but it was a bit more difficult to wrap my head around.
+  - After running `ls -la` it gave me a break down of the permissions | user | group | filesize | date/time | file or directory name.
+  - The file `bandit20-do` permissions were `-rwsr-x---` which effectively means the executable permission is replaced with a special permission Suid. 
+  - The binary will be run as the owner of the binary not the one executing it. 
+  - Our file was owned by bandit20 and the group is bandit19.
+  - So since we are currently user bandit19 trying to run `cat /etc/bandit_pass/bandit20` to get the password will give us a Permission denied.
+  - If we execute our binary it will allow us to run a command as bandit20.
+  - `./bandit20-do cat /etc/bandit_pass/bandit20` is what we want.
+
+### Level 20 -> 21
+- **Password needed:** EeoULMCra2q0dSkYj561DX7s1CpBuOBt
+  - This is another one that I seen was done in a few different ways so I am trying to wrap my head around how it was done. 
+  - We need to setup a listener on any port on the system you specify as a commandline argument. We can setup a listener with the `netcat` command. 
+  - If we echo the previous password we obtained to log into level bandit20 as `echo "0qXahG8ZjOVMN9Ghs7iOWsCfZyXOUbYO"` this will display the password as standard output in the terminal. We want to pipe this over to the netcat command.
+  - `echo "0qXahG8ZjOVMN9Ghs7iOWsCfZyXOUbYO" | netcat -lp 1234` the -l flag is used to setup the listener and the -p flag is used to specify the port the listener should be on. If we do not specify an IP Address the listener will run on localhost. 
+  - There were a few solutions done using two terminals or terminal panes to run the listener and then connect using the other but if we use `&` at the end of the command this will specify to run the command in the background. 
+  - The `jobs` command can be used to view all the processes/jobs on the system. 
+  - We can use the ./suconnect 1234 (our port number) to connect with the binary file on the same port and as soon as we connect the password of the previous level is compared with the text we specified and if they match we get a password for the next level.
+
+### Level 21 -> 22
+- **Password needed:** tRae0UfB9v0UzbCdn9cY0gQnds9GF58Q
+  - A program is running automatically at regular intervals from cron, the time-based job scheduler. Look in /etc/cron.d/ for the configuration and see what command is being executed.
+  - After going to look inside the directory and see what files were there, one was called `cronjob_bandit22` which seemed to spark curiosity. 
+  - After using cat to determine the contents we can see the following:
+  ```bash
+  @reboot bandit22 /usr/bin/cronjob_bandit22.sh &> /dev/null
+  * * * * * bandit22 /usr/bin/cronjob_bandit22.sh &> /dev/null
+  ```
+  - This shows us that a cronjob is running the `cronjob_bandit22.sh` file as bandit22 user. The five stars indicate it is run every minute, every day. 
+  - We need to have a look at the file to see what the script is doing. 
+  ```bash
+  bandit21@bandit:/etc/cron.d$ cat /usr/bin/cronjob_bandit22.sh
+  #!/bin/bash
+  chmod 644 /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+  cat /etc/bandit_pass/bandit22 > /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+  ```
+  - We can see that it creates a file in the 'tmp' directory and copies the input of the bandit22 password file into the newly created file.
+    - It's probably worth reading and researching a bit more on permissions to find out more about them.
+    - 644 means you can read and write the file or directory and other users can only read it.
+    - The numbers relate to octal values for user, group and other. 
+    - I found a cheatsheet [here](https://elhacker.info/Cursos/Complete%20Linux%20Training%20Course%20to%20Get%20Your%20Dream%20IT%20Job%202023/4%20-%20Module%204%20Linux%20Fundamentals/83%20-%2011-File-Permissions-Cheat-Sheet.pdf) explaining the permissions. 
+  - So if we cat the contents of the 'tmp' file we should get our next password.
+    - ```bash
+      bandit21@bandit:/etc/cron.d$ cat /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+      tRae0UfB9v0UzbCdn9cY0gQnds9GF58Q
+      ```
+
