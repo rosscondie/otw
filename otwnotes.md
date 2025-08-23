@@ -229,4 +229,88 @@
     ```
 
 ### Level 23 -> 24
-- **Password needed:**
+- **Password needed:** gb8KRRCsshuZXI0tUuR6ypOFjiZbf3G8
+
+- For this just like the other cron job tasks I cd'd into the `/etc/cron.d/` directory and used cat to view the contents of the 'cronjob_bandit24' which gave us the script that was being executed. 
+
+  ```bash
+    bandit23@bandit:/etc/cron.d$ cat cronjob_bandit24
+    @reboot bandit24 /usr/bin/cronjob_bandit24.sh &> /dev/null
+    * * * * * bandit24 /usr/bin/cronjob_bandit24.sh &> /dev/null
+  ```
+
+  - Again let's view the contents of the script.
+
+  ```bash
+  bandit23@bandit:/etc/cron.d$ cat /usr/bin/cronjob_bandit24.sh
+  #!/bin/bash
+
+  myname=$(whoami)
+
+  cd /var/spool/$myname/foo
+  echo "Executing and deleting all scripts in /var/spool/$myname/foo:"
+  for i in * .*;
+  do
+      if [ "$i" != "." -a "$i" != ".." ];
+      then
+          echo "Handling $i"
+          owner="$(stat --format "%U" ./$i)"
+          if [ "${owner}" = "bandit23" ]; then
+              timeout -s 9 60 ./$i
+          fi
+          rm -f ./$i
+      fi
+  done
+  ```
+  - 'myname' variable is being set to the current user being 'bandit24'
+  - Then cd'ing into the '/var/spool/bandit24/foo' directory
+  - A for loop is started and it's saying look at `*` (all files in this folder)
+    - `.*` including all hidden files in this folder
+    - Then `do` stuff inside the loop.
+
+  - there is a condition that says if i is not the current directory `-a` (AND) the parent directory (the directory above) then continue.
+
+  - `owner="$(stat --format "%U" ./$i)"`
+    - This line asks: “Who owns this file?”
+    - stat is a command that gives you details about a file
+    - --format "%U" means “just give me the owner’s username.”
+    - ./$i means “look at the file named $i in the current folder.”
+    - The result gets stored in a variable called owner
+    - So after this, the script knows who owns the file
+
+  - if the ownder is 'bandit23' (who we are currently logged in as) then do the stuff inside.
+
+  - `timeout -s 9 60 ./$i`
+  - This tries to run the file as a program/script.
+  - timeout 60 means: Run it, but stop it after 60 seconds if it hasn’t finished.
+  - -s 9 means: If it times out, kill it with signal 9 (force kill).
+  - ./$i means: Run the file named $i in this folder.
+  - So this is literally executing your file (if you own it) but only letting it run for one minute.
+
+  - `rm -f ./$i`
+  - After trying to run the file, it deletes it, no matter what happened.
+  - rm means “remove (delete).”
+  - -f means “force”
+  - So files get executed (if you own them) and then deleted.
+
+  - So we need to write our own script which will be executed to give us the password. We can do this by first creating a random directory using the `mktemp -d` in the '/tmp' directory.
+  - The reason OTW has us do this as so many other people have created directories probably with a similar name and it is good to know how to do this. `mktemp` on it's own creates a random file and with the '-d' flag creates a directory.
+  - Copy the directory path and cd into it. 
+  ```bash
+  cd /tmp/tmp.totallyrandomnamehere
+  ```
+
+  - Create the script with vim or with nano whatever you are comfortable with. 
+
+  ```bash
+  #!/bin/bash
+  cat /etc/bandit_pass/bandit24 > /tmp/tmp.totallyrandomnamehere/password.txt
+  ```
+  - Remember to give the script the correct permissions `chmod 777 bash_script.sh`
+  - Now we can copy the file over to the directory where it will be ran `cp bash_script.sh /var/spool/bandit24/foo`
+  - Now we wait since the cronjob runs on the minute. You can check the time using the `date` command. 
+
+  - So a 'password.txt' file did not appear for me and that is because we need to make our temporary directory have the correct permissions to receive the file. 
+  `chmod 777 /tmp/tmp.totallyrandomname` and wait again until the minute has passed
+  - Finally we can cat the 'password.txt' file for the next levels password.
+
